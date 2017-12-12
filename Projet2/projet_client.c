@@ -44,16 +44,11 @@ int main(int argc, char *argv[])
   their_addr.sin_addr = *((struct in_addr*)he->h_addr);
   memset(&(their_addr.sin_zero), '\0', 8);
 
-
-
-
-
   if (connect(sockfd, (struct sockaddr *)&their_addr,
-	      sizeof(struct sockaddr)) == -1) {
+        sizeof(struct sockaddr)) == -1) {
     perror("Client: connect");
     return EXIT_FAILURE;
   }
-
 
   if ((numbytes=recv(sockfd, buf, 99, 0)) == -1) {
     perror("Client: recv");
@@ -62,9 +57,10 @@ int main(int argc, char *argv[])
   buf[numbytes] = '\0';
   printf("Message recu du serveur: %s",buf);
 
-
-
-
+  if (send(sockfd, "Bonjour Serveur!\n",16,0)==-1) {
+    perror("Serveur: send");
+    return EXIT_FAILURE;
+  }
 
 
   close(sockfd);
