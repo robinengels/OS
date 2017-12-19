@@ -73,7 +73,7 @@ int is_online(char name[])
 
 void affiche_client(int dest)
 {
-  if (send(dest,"w ",100,0)==-1) {
+  if (send(dest,"w ",500,0)==-1) {
     perror("Serveur: send");
   }
   client *current;
@@ -81,20 +81,19 @@ void affiche_client(int dest)
   current = current->next;
   while(current->next != NULL)
   {
-    if (send(dest, current->name,100,0)==-1) {
+    if (send(dest, current->name,500,0)==-1) {
       perror("Serveur: send");
     }
     current = current->next;
   }
-  if (send(dest, current->name,100,0)==-1) {
+  if (send(dest, current->name,500,0)==-1) {
     perror("Serveur: send");
 
   }
-  if (send(dest,"E Terminated",100,0)==-1) {
+  if (send(dest,"E Terminated",500,0)==-1) {
     perror("Serveur: here send");
 
   }
-  printf("J'ai terminé d'envoyer\n");
 }
 
 void append_client(int fd, char name[])
@@ -120,7 +119,10 @@ void *handle_client(void *socket)
   int client_socket = (int)socket;
   int numbytes,stop;
   char buf[100];
-  int send_to;
+  char message[10];
+  char online[100] = "found";
+  char inc_msg[499];
+  char pseudo[100];
 
 
   while(stop != 1){
@@ -136,30 +138,60 @@ void *handle_client(void *socket)
 
   else if(buf[0] == '1')
   {
-    printf("Un client demande a voir la liste\n");
     affiche_client(client_socket);
   }
 
   else if(buf[0]=='2')
   {
+    printf("Quelqun veut chatter");
     if ((numbytes=recv(client_socket, buf, 500, 0)) == -1) {
       perror("Client: recv");
     }
-    send_to = is_online(buf);
-
-    if (send(client_socket, "c He's online"  ,500,0)==-1) {
-      perror("Serveur: send");
-      return 0;
+    client *current;
+    current = &head;
+    int found = 0;
+    while(current->next != NULL)
+    {
+      if(strcmp(current->name,buf) == 0){
+        found = current->fd;
+      }
+      current = current->next;
+    }
+    if(strcmp(current->name,buf) == 0){
+      found = current->fd;
     }
 
-    if ((numbytes=recv(client_socket, buf, 500, 0)) == -1) {
+    printf("%i\n",found );
+
+    if (found != 0)
+    {
+    if (send(client_socket,online,100,0)==-1) {
+      perror("Serveur: here send");
+    }
+
+
+    printf("Test\n");
+
+    if ((numbytes=recv(client_socket, inc_msg, 500, 0)) == -1) {
       perror("Client: recv");
     }
+    printf("Message reçu du buf%s\n",inc_msg );
 
-    if (send(send_to, buf  ,500,0)==-1) {
-      perror("Serveur: send");
-      return 0;
+    strcpy(message,"m ");
+    strcat(message,inc_msg);
+    printf("Message %s\n",message );
+    if (send(found,message,500,0)==-1) {
+      perror("Serveur: here send");
     }
+  }
+  else
+  {
+    printf("Mauvais pseudo");
+    if (send(client_socket,"Error client not found",100,0)==-1) {
+      perror("Serveur: here send");
+    }
+  }
+
 
 
 
@@ -177,7 +209,7 @@ void *handle_client(void *socket)
 
 
 int add_client(int sock_fd, struct sockaddr_in client_addr){
-    int new_fd,numbytes;
+    int new_fd,numbytes,valid,result;
     int *new_sock;
     unsigned int sin_size = sizeof(struct sockaddr_in);
     char buf[100];
@@ -186,14 +218,39 @@ int add_client(int sock_fd, struct sockaddr_in client_addr){
     {
       perror("Serveur: accept");
     }
-
-
-      if ((numbytes=recv(new_fd, buf, 99, 0)) == -1) {
-        perror("Client: recv");
-        return EXIT_FAILURE;
+    valid = 0;
+    char response[100]="0 w";
+    while(valid == 0){
+    if ((numbytes=recv(new_fd, buf, 100, 0)) == -1) {
+      perror("Client: recv");
+      return EXIT_FAILURE;
+    }
+    buf[numbytes] = '\0';
+    client *current;
+    current = &head;
+    int found = 0;
+    while(current->next != NULL)
+    {
+      if(strcmp(current->name,buf) == 0){
+        found = 1;
       }
-      buf[numbytes] = '\0';
+      current = current->next;
+    }
+    if(strcmp(current->name,buf) == 0){
+      found = 1;
+    }
 
+    if (found == 0)
+    {
+      response[0] = 'y';
+      valid = 1;
+    }
+
+    if (send(new_fd, response,100,0)==-1) {
+      perror("Serveur: send");
+    }
+
+    }
     append_client(new_fd,buf);
 
 
@@ -265,7 +322,6 @@ int main()
 
         if(FD_ISSET(sock_fd,&readfds))
         {
-        printf("Nouvelle demande de connection\n");
         add_client(sock_fd,client_addr);
         }
 

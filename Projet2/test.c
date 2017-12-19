@@ -2,9 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-pthread_mutex_lock(&mutex_wait);
-pthread_cond_wait(&cond_wait,&mutex_wait);
-pthread_mutex_unlock(&mutex_wait);
+
 
 
 typedef struct client{
@@ -95,12 +93,18 @@ void append_client(int fd, char name[])
   current->next = new_client;
 }
 
+void shift(char text[],int size)
+{
+  for (int i = 0; i < size-1; i++) {
+    text[i] = text[i+1];
+  }
+}
 
 int main(int argc, char const *argv[]) {
-  append_client(5,"André");
-  append_client(6,"Mortibal");
-  append_client(7,"Hihi");
-  printf("%i\n",is_online("Hihi") );
+  char *input = malloc(500);
+  char chatter[100] ="mSalut a tous";
+  scanf(" %99[^\n]",chatter);
+  printf("%s\n",chatter );
 
   return 0;
 }

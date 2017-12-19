@@ -17,6 +17,13 @@ int sockfd;
 static pthread_cond_t cond_stock = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t mutex_stock = PTHREAD_MUTEX_INITIALIZER;
 
+void shift(char text[],int size)
+{
+  for (int i = 0; i < size-1; i++) {
+    text[i] = text[i+1];
+  }
+}
+
 void main_menu()
 {
   printf("Bienvenu sur ChatCana le chat de Jacana\n");
@@ -30,37 +37,62 @@ void *handle_client(void *socket)
 {
   int client_socket = (int)socket;
   int numbytes,stop;
-  char msg[100];
+  char msg[500];
+  char *input = malloc(500);
+  char *get_message = malloc(500);
   int send_to,finish;
   stop = 0;
+  finish = 0;
 
 
   while(stop != 1){
   if ((numbytes=recv(client_socket, msg, 500, 0)) == -1) {
     perror("Client: recv");
   }
+  msg[numbytes] = '\0';
   if(msg[0] == 'w'){
 
     printf("Client connecté : \n");
     finish = 0;
     while(finish != 1){
-      if ((numbytes=recv(client_socket, msg, 500, 0)) == -1) {
+      if ((numbytes=recv(client_socket, input, 500, 0)) == -1) {
         perror("Client: recv");
         return EXIT_FAILURE;
       }
-      msg[numbytes] = '\0';
-      if(msg[0] == 'E'){
+      if(input[0] == 'E'){
         finish = 1;
       }
       else
       {
-      printf("- %s\n",msg );
+      printf("- %s\n",input );
       }
     }
+    pthread_cond_signal(&cond_stock);
   }
-  pthread_cond_signal(&cond_stock);
+  else if(msg[0] == 'f')
+  {
+    printf("Message a envoyé : ");
+    scanf(" %99[^\n]",get_message);
+
+    if (send(sockfd, get_message ,500,0)==-1) {
+      perror("Serveur: send");
+      }
+    pthread_cond_signal(&cond_stock);
+  }
+  else if(msg[0] == 'm')
+  {
+    shift(msg,500);
+    printf("Message reçu :%s\n", msg );
+  }
+  else if(msg[0] == 'e')
+  {
+    printf("Erreur reçue : %s\n",msg);
+    pthread_cond_signal(&cond_stock);
+  }
 
  }
+
+ return 0;
 }
 
 
@@ -71,7 +103,6 @@ int main(int argc, char *argv[])
   char buf[100];
   struct sockaddr_in their_addr;
   struct hostent *he;
-
   char name[100];
 
   printf("Entrer le pseudo que vous désirer : ");
@@ -107,13 +138,34 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  if (send(sockfd, name  ,16,0)==-1) {
+  int valid_name = 0;
+  while(valid_name == 0){
+
+  if (send(sockfd, name  ,100,0)==-1) {
     perror("Serveur: send");
     return EXIT_FAILURE;
   }
+  if ((numbytes=recv(sockfd, name, 500, 0)) == -1) {
+    perror("Client: recv");
+  }
+  name[numbytes] = '\0';
 
+  if(name[0] == 'y')
+  {
+    valid_name = 1;
+  }
+  else
+  {
+    printf("Pseudo déja pris entrer en un autre : ");
+    scanf("%s",name );
+    printf("%s\n",name );
+  }
+
+  }
   int choice;
-
+  char chatter[100];
+  char message[500];
+  char answer[101];
 
 
 
@@ -137,10 +189,23 @@ int main(int argc, char *argv[])
     }
 
     else if (choice == 2){
-    if (send(sockfd, "2 I want to chat"  ,50,0)==-1) {
+      if (send(sockfd, "1 I want to see who's up"  ,50,0)==-1) {
+        perror("Serveur: send");
+        return EXIT_FAILURE;
+      }
+    pthread_cond_wait(&cond_stock,&mutex_stock);
+
+    if (send(sockfd, "2 I want to chat"  ,101,0)==-1) {
       perror("Serveur: send");
       return EXIT_FAILURE;
     }
+    printf("Avec qui voulez vous chatter ? : ");
+    scanf("%s", chatter );
+    if (send(sockfd, chatter  ,100,0)==-1) {
+      perror("Serveur: send");
+      return EXIT_FAILURE;
+    }
+    pthread_cond_wait(&cond_stock,&mutex_stock);
     }
 
 
@@ -150,31 +215,10 @@ int main(int argc, char *argv[])
         perror("Serveur: send");
         return EXIT_FAILURE;
       }
-      /*
-      printf("Client connecté : \n");
-      finish = 0;
-      while(finish != 1){
-        if ((numbytes=recv(sockfd, buf, 100, 0)) == -1) {
-          perror("Client: recv");
-          return EXIT_FAILURE;
-        }
-        buf[numbytes] = '\0';
-        if(buf[0] == 'E'){
-          finish = 1;
-        }
-        else
-        {
-        printf("- %s\n",buf );
-        }
-      }
-    printf("\n\n");
-  }*/
   pthread_cond_wait(&cond_stock,&mutex_stock);
   }
 }
 
   close(sockfd);
-
-
   return EXIT_SUCCESS;
 }
