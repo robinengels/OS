@@ -22,6 +22,7 @@ typedef struct client{
 }client ;
 
 client head = {-1,"HEAD",NULL};
+static pthread_mutex_t mutex_stock = PTHREAD_MUTEX_INITIALIZER;
 
 void del_client(int client_socket)
 {
@@ -124,6 +125,21 @@ void *handle_client(void *socket)
   char inc_msg[499];
   char pseudo[100];
 
+  client *current;
+  current = &head;
+  while(current->next != NULL)
+  {
+    if(client_socket == current->fd){
+      strcpy(pseudo,current->name);
+    }
+    current = current->next;
+  }
+  if(client_socket == current->fd){
+    strcpy(pseudo,current->name);
+  }
+
+
+
 
   while(stop != 1){
 
@@ -138,7 +154,9 @@ void *handle_client(void *socket)
 
   else if(buf[0] == '1')
   {
+    pthread_mutex_lock(&mutex_stock);
     affiche_client(client_socket);
+    pthread_mutex_lock(&mutex_stock);
   }
 
   else if(buf[0]=='2')
@@ -178,8 +196,12 @@ void *handle_client(void *socket)
     printf("Message reçu du buf%s\n",inc_msg );
 
     strcpy(message,"m ");
+    strcat(message,pseudo);
+    strcat(message,": ");
     strcat(message,inc_msg);
     printf("Message %s\n",message );
+
+
     if (send(found,message,500,0)==-1) {
       perror("Serveur: here send");
     }
@@ -187,7 +209,7 @@ void *handle_client(void *socket)
   else
   {
     printf("Mauvais pseudo");
-    if (send(client_socket,"Error client not found",100,0)==-1) {
+    if (send(client_socket,"error client not found",100,0)==-1) {
       perror("Serveur: here send");
     }
   }
@@ -209,7 +231,7 @@ void *handle_client(void *socket)
 
 
 int add_client(int sock_fd, struct sockaddr_in client_addr){
-    int new_fd,numbytes,valid,result;
+    int new_fd,numbytes,valid;
     int *new_sock;
     unsigned int sin_size = sizeof(struct sockaddr_in);
     char buf[100];

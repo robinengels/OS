@@ -40,7 +40,7 @@ void *handle_client(void *socket)
   char msg[500];
   char *input = malloc(500);
   char *get_message = malloc(500);
-  int send_to,finish;
+  int finish;
   stop = 0;
   finish = 0;
 
@@ -82,7 +82,8 @@ void *handle_client(void *socket)
   else if(msg[0] == 'm')
   {
     shift(msg,500);
-    printf("Message reçu :%s\n", msg );
+    printf("Message reçu de%s\n", msg );
+    pthread_cond_signal(&cond_stock);
   }
   else if(msg[0] == 'e')
   {
@@ -99,8 +100,7 @@ void *handle_client(void *socket)
 
 int main(int argc, char *argv[])
 {
-  int numbytes,finish;
-  char buf[100];
+  int numbytes;
   struct sockaddr_in their_addr;
   struct hostent *he;
   char name[100];
@@ -164,8 +164,7 @@ int main(int argc, char *argv[])
   }
   int choice;
   char chatter[100];
-  char message[500];
-  char answer[101];
+
 
 
 
